@@ -1,0 +1,72 @@
+[
+    {
+        "templateOptions":  {
+
+                            },
+        "type":  "markdown",
+        "summaryVisibility":  "Show",
+        "body":  "This report shows which local AD accounts have been disabled in the past 30 days.\nPlease wait while we load the data...",
+        "requiresTemplateOptions":  false,
+        "requiresKey":  false,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "gridADUsers",
+        "templateOptions":  {
+                                "label":  "AD Users",
+                                "grid":  {
+                                             "columns":  [
+                                                             {
+                                                                 "headerName":  "DisplayName",
+                                                                 "field":  "displayName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Sam Account Name",
+                                                                 "field":  "samAccountName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "User Principal Name",
+                                                                 "field":  "userPrincipalName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Title",
+                                                                 "field":  "title"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Department",
+                                                                 "field":  "department"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Disabled At",
+                                                                 "field":  "disabledAt"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Last Logon Date",
+                                                                 "field":  "lastLogonDate"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Distinguished Name",
+                                                                 "field":  "distinguishedName"
+                                                             }
+                                                         ],
+                                             "height":  500,
+                                             "rowSelection":  "single"
+                                         },
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_0",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "useFilter":  true,
+                                "useDefault":  false
+                            },
+        "type":  "grid",
+        "summaryVisibility":  "Hide element",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  true
+    }
+]
