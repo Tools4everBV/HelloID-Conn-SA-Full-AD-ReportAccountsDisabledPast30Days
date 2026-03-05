@@ -6,7 +6,7 @@
 $portalUrl = "https://CUSTOMER.helloid.com"
 $apiKey = "API_KEY"
 $apiSecret = "API_SECRET"
-$delegatedFormAccessGroupNames = @("Users") #Only unique names are supported. Groups must exist!
+$delegatedFormAccessGroupNames = @("") #Only unique names are supported. Groups must exist!
 $delegatedFormCategories = @("User Management","Active Directory") #Only unique names are supported. Categories will be created if not exists
 $script:debugLogging = $false #Default value: $false. If $true, the HelloID resource GUIDs will be shown in the logging
 $script:duplicateForm = $false #Default value: $false. If $true, the HelloID resource names will be changed to import a duplicate Form
@@ -15,6 +15,15 @@ $script:duplicateFormSuffix = "_tmp" #the suffix will be added to all HelloID re
 #The following HelloID Global variables are used by this form. No existing HelloID global variables will be overriden only new ones are created.
 #NOTE: You can also update the HelloID Global variable values afterwards in the HelloID Admin Portal: https://<CUSTOMER>.helloid.com/admin/variablelibrary
 $globalHelloIDVariables = [System.Collections.Generic.List[object]]@();
+
+#Global variable #1 >> AdUsersDisabledSearchOu
+$tmpName = @'
+AdUsersDisabledSearchOu
+'@ 
+$tmpValue = @'
+OU=Disabled Users,OU=enyoi,DC=enyoi,DC=local;OU=Disabled UsersLite,OU=enyoi,DC=enyoi,DC=local
+'@ 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 
 #make sure write-information logging is visual
@@ -70,7 +79,7 @@ function Invoke-HelloIDGlobalVariable {
     try {
         $uri = ($script:PortalBaseUrl + "api/v1/automation/variables/named/$Name")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-    
+
         if ([string]::IsNullOrEmpty($response.automationVariableGuid)) {
             #Create Variable
             $body = @{
@@ -80,7 +89,7 @@ function Invoke-HelloIDGlobalVariable {
                 ItemType = 0;
             }    
             $body = ConvertTo-Json -InputObject $body -Depth 100
-    
+
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $variableGuid = $response.automationVariableGuid
@@ -106,14 +115,14 @@ function Invoke-HelloIDAutomationTask {
         [parameter()][String][AllowEmptyString()]$ForceCreateTask,
         [parameter(Mandatory)][Ref]$returnObject
     )
-    
+
     $TaskName = $TaskName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
 
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/automationtasks?search=$TaskName&container=$AutomationContainer")
         $responseRaw = (Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false) 
         $response = $responseRaw | Where-Object -filter {$_.name -eq $TaskName}
-    
+
         if([string]::IsNullOrEmpty($response.automationTaskGuid) -or $ForceCreateTask -eq $true) {
             #Create Task
 
@@ -126,7 +135,7 @@ function Invoke-HelloIDAutomationTask {
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-    
+
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $taskGuid = $response.automationTaskGuid
@@ -153,6 +162,7 @@ function Invoke-HelloIDDatasource {
         [parameter()][String][AllowEmptyString()]$DatasourcePsScript,        
         [parameter()][String][AllowEmptyString()]$DatasourceInput,
         [parameter()][String][AllowEmptyString()]$AutomationTaskGuid,
+        [parameter()][String][AllowEmptyString()]$DatasourceRunInCloud,
         [parameter(Mandatory)][Ref]$returnObject
     )
 
@@ -164,11 +174,11 @@ function Invoke-HelloIDDatasource {
         "3" { "Task data source"; break} 
         "4" { "Powershell data source"; break}
     }
-    
+
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/datasource/named/$DatasourceName")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-      
+    
         if([string]::IsNullOrEmpty($response.dataSourceGUID)) {
             #Create DataSource
             $body = @{
@@ -179,12 +189,13 @@ function Invoke-HelloIDDatasource {
                 value              = (ConvertFrom-Json-WithEmptyArray($DatasourceStaticValue));
                 script             = $DatasourcePsScript;
                 input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
+                runInCloud         = $DatasourceRunInCloud;
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-      
+    
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-              
+            
             $datasourceGuid = $response.dataSourceGUID
             Write-Information "$datasourceTypeName '$DatasourceName' created$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         } else {
@@ -193,7 +204,7 @@ function Invoke-HelloIDDatasource {
             Write-Warning "$datasourceTypeName '$DatasourceName' already exists$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         }
     } catch {
-      Write-Error "$datasourceTypeName '$DatasourceName', message: $_"
+        Write-Error "$datasourceTypeName '$DatasourceName', message: $_"
     }
 
     $returnObject.Value = $datasourceGuid
@@ -205,7 +216,7 @@ function Invoke-HelloIDDynamicForm {
         [parameter(Mandatory)][String]$FormSchema,
         [parameter(Mandatory)][Ref]$returnObject
     )
-    
+
     $FormName = $FormName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
 
     try {
@@ -215,7 +226,7 @@ function Invoke-HelloIDDynamicForm {
         } catch {
             $response = $null
         }
-    
+
         if(([string]::IsNullOrEmpty($response.dynamicFormGUID)) -or ($response.isUpdated -eq $true)) {
             #Create Dynamic form
             $body = @{
@@ -223,10 +234,10 @@ function Invoke-HelloIDDynamicForm {
                 FormSchema = (ConvertFrom-Json-WithEmptyArray($FormSchema));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-    
+
             $uri = ($script:PortalBaseUrl +"api/v1/forms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-    
+
             $formGuid = $response.dynamicFormGUID
             Write-Information "Dynamic form '$formName' created$(if ($script:debugLogging -eq $true) { ": " + $formGuid })"
         } else {
@@ -262,7 +273,7 @@ function Invoke-HelloIDDelegatedForm {
         } catch {
             $response = $null
         }
-    
+
         if([string]::IsNullOrEmpty($response.delegatedFormGUID)) {
             #Create DelegatedForm
             $body = @{
@@ -279,10 +290,10 @@ function Invoke-HelloIDDelegatedForm {
                 }
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-    
+
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-    
+
             $delegatedFormGuid = $response.delegatedFormGUID
             Write-Information "Delegated form '$DelegatedFormName' created$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormGuid })"
             $delegatedFormCreated = $true
@@ -304,7 +315,6 @@ function Invoke-HelloIDDelegatedForm {
     $returnObject.value.created = $delegatedFormCreated
 }
 
-
 <# Begin: HelloID Global Variables #>
 foreach ($item in $globalHelloIDVariables) {
 	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
@@ -313,90 +323,125 @@ foreach ($item in $globalHelloIDVariables) {
 
 
 <# Begin: HelloID Data sources #>
-<# Begin: DataSource "ad-user-report-blocked-accounts-past-30-days-genertate-table-users" #>
+<# Begin: DataSource "ad-report-disabled-accounts-in-the-past-x-days | AD-Get-Disabled-Users-Disabled-Past-X-Days" #>
 $tmpPsScript = @'
-# Warning! When no disabledOU is specified. All users will be retrieved.
-$disabledOU = ""
-#Get Primary Domain Controller
-$domainController = (Get-ADForest | Select-Object -ExpandProperty RootDomain | Get-ADDomain | Select-Object -Property PDCEmulator).PDCEmulator
+# Variables configured in form
+$disabledThresholdDays = - ($datasource.thresholdDays)
 
+# Build filter to retrieve all disabled users, then filter by disable date in code (as LastLogonDate is not reliable for this purpose)
+$filter = "Enabled -eq `$False -and (Name -like '*')"
 
-$currentDate = Get-Date
-$disabledThreshold = $currentDate.AddDays(-30)
+# Global variables
+$searchOUs = $ADUsersDisabledSearchOU
+
+# Fixed values
+$propertiesToSelect = @(
+	"ObjectGuid",
+	"DisplayName",
+	"SamAccountName",
+	"UserPrincipalName",
+	"Department",
+	"Title",
+	"LastLogonDate",
+	"Enabled"
+)
+
+# Set debug logging
+$VerbosePreference = "SilentlyContinue"
+$InformationPreference = "Continue"
+$WarningPreference = "Continue"
 
 try {
-    $properties = @(
-        "displayName",
-        "samAccountName",
-        "userPrincipalName",
-        "department",
-        "title",
-        "lastLogonDate",
-        "enabled",
-        "distinguishedName"
-    )
+	#region Get Primary Domain Controller
+	$actionMessage = "querying Primary Domain Controller"
+    
+	$domainController = (Get-ADForest | Select-Object -ExpandProperty RootDomain | Get-ADDomain | Select-Object -Property PDCEmulator).PDCEmulator
+	Write-Information "Queried Primary Domain Controller: $domainController"
 
-    if($disabledOU){
-        $disabledUsers = Get-ADUser -filter * -SearchBase $disabledOU -Server $domainController -Properties $properties | Where-Object {$_.Enabled -eq $false} | Sort-Object samAccountNAme
-    }else{
-        $disabledUsers = Get-ADUser -filter * -Server $domainController -Properties $properties | Where-Object {$_.enabled -eq $false} | Sort-Object samAccountNAme
-    }
-    
-    Write-Information "Processing [$($disabledUsers.sAMAccountName.count)] disabled users in OU '$disabledOU'"
-    
-    [System.Collections.ArrayList]$disabledUsersBeforeX =  @()
-    foreach($disabledUser in $disabledUsers){
-        $disabledAt = ($disabledUser | Get-ADReplicationAttributeMetadata -Properties userAccountControl -Server $domainController).LastOriginatingChangeTime
-        if( ($disabledAt -lt $currentDate) -and ($disabledAt -gt $disabledThreshold) ){     
-            $userObject = [Ordered]@{
-                displayName         = $disabledUser.displayName
-                samAccountName      = $disabledUser.samAccountName
-                userPrincipalName   = $disabledUser.userPrincipalName
-                department          = $disabledUser.department
-                title               = $disabledUser.title
-                lastLogonDate       = $disabledUser.lastLogonDate
-                disabledAt          = $disabledAt
-                distinguishedName   = $disabledUser.distinguishedName
-            }
-            $null = $disabledUsersBeforeX.Add($userObject)
-        }
-    }
+	# Calculate date threshold
+	$actionMessage = "calculating date threshold for disabled users"
 
-    $resultCount = @($disabledUsersBeforeX).Count
-    Write-information "Result count: $resultCount"
+	$currentDate = Get-Date
+	$disabledThreshold = $currentDate.AddDays($disabledThresholdDays)
+	Write-Information "Disabled threshold date: [$disabledThreshold]"
+
+	# Query users
+	$actionMessage = "querying AD account(s) matching the filter [$filter] in OU(s) [$($searchOUs)]"
+
+	$ous = $searchOUs -split ';'
+	$adUsers = [System.Collections.ArrayList]@()
+	foreach ($ou in $ous) {
+		$actionMessage = "querying AD account(s) matching the filter [$filter] in OU [$($ou)]"
+		$getAdUsersSplatParams = @{
+			Filter      = $filter
+			Searchbase  = $ou
+			Properties  = $propertiesToSelect
+			Server      = $domainController
+			Verbose     = $False
+			ErrorAction = "Stop"
+		}
+		$getAdUsersResponse = Get-AdUser @getAdUsersSplatParams | Select-Object -Property $propertiesToSelect
+
+		if ($getAdUsersResponse -is [array]) {
+			[void]$adUsers.AddRange($getAdUsersResponse)
+		}
+		else {
+			[void]$adUsers.Add($getAdUsersResponse)
+		}
+	}
+	Write-Information "Queried AD account(s) matching the filter [$filter] in OU(s) [$($searchOUs)]. Result count: $(($adUsers | Measure-Object).Count)"
     
-    if($resultCount -gt 0){
-        foreach($user in $disabledUsersBeforeX){
-            Write-output $user
-        }
-    }
-} catch {
-    Write-error "Error generating report. Error: $_"
-    return
+	# Filter users disabled within threshold
+	$actionMessage = "filtering users disabled after threshold date [$disabledThreshold]"
+    
+	$disabledUsersBeforeX = [System.Collections.ArrayList]@()
+	$adUsers | Foreach-Object {
+		$actionMessage = "retrieving disable date for user [$($_.SamAccountName)]"
+		$disabledAt = (Get-ADReplicationAttributeMetadata -Object $_.ObjectGuid -Properties userAccountControl -Server $domainController).LastOriginatingChangeTime
+      
+		# Check if disabledAt is within the threshold
+		if (($disabledAt -lt $currentDate) -and ($disabledAt -gt $disabledThreshold)) {
+			# Add disabledAt property and set with the retrieved disabled at date
+			$_ | Add-Member -MemberType NoteProperty -Name "disabledAt" -Value $disabledAt -Force
+			[void]$disabledUsersBeforeX.Add($_)
+		}
+	}
+	Write-Information "Filtered users disabled after threshold date [$disabledThreshold]. Result count: $(($disabledUsersBeforeX | Measure-Object).Count)"
+
+	# Send results to HelloID
+	$disabledUsersBeforeX | ForEach-Object {
+		Write-Output $_
+	}
+}
+catch {
+	$ex = $PSItem
+	Write-Warning "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
+	Write-Error "Error $($actionMessage). Error: $($ex.Exception.Message)"
+	# exit # use when using multiple try/catch and the script must stop
 }
 '@ 
 $tmpModel = @'
-[{"key":"lastLogonDate","type":0},{"key":"title","type":0},{"key":"disabledAt","type":0},{"key":"displayName","type":0},{"key":"userPrincipalName","type":0},{"key":"samAccountName","type":0},{"key":"department","type":0},{"key":"distinguishedName","type":0}]
+[{"key":"ObjectGuid","type":0},{"key":"DisplayName","type":0},{"key":"SamAccountName","type":0},{"key":"UserPrincipalName","type":0},{"key":"Department","type":0},{"key":"Title","type":0},{"key":"LastLogonDate","type":0},{"key":"Enabled","type":0},{"key":"disabledAt","type":0}]
 '@ 
 $tmpInput = @'
-[]
+[{"description":null,"translateDescription":false,"inputFieldType":1,"key":"thresholdDays","type":0,"options":1}]
 '@ 
 $dataSourceGuid_0 = [PSCustomObject]@{} 
 $dataSourceGuid_0_Name = @'
-ad-user-report-blocked-accounts-past-30-days-genertate-table-users
+ad-report-disabled-accounts-in-the-past-x-days | AD-Get-Disabled-Users-Disabled-Past-X-Days
 '@ 
-Invoke-HelloIDDatasource -DatasourceName $dataSourceGuid_0_Name -DatasourceType "4" -DatasourceInput $tmpInput -DatasourcePsScript $tmpPsScript -DatasourceModel $tmpModel -returnObject ([Ref]$dataSourceGuid_0) 
-<# End: DataSource "ad-user-report-blocked-accounts-past-30-days-genertate-table-users" #>
+Invoke-HelloIDDatasource -DatasourceName $dataSourceGuid_0_Name -DatasourceType "4" -DatasourceInput $tmpInput -DatasourcePsScript $tmpPsScript -DatasourceModel $tmpModel -DataSourceRunInCloud "False" -returnObject ([Ref]$dataSourceGuid_0) 
+<# End: DataSource "ad-report-disabled-accounts-in-the-past-x-days | AD-Get-Disabled-Users-Disabled-Past-X-Days" #>
 <# End: HelloID Data sources #>
 
-<# Begin: Dynamic Form "AD - Report - Disabled accounts in the past 30 days" #>
+<# Begin: Dynamic Form "AD - Report - Disabled accounts in the past X days" #>
 $tmpSchema = @"
-[{"templateOptions":{},"type":"markdown","summaryVisibility":"Show","body":"This report shows which local AD accounts have been disabled in the past 30 days.\nPlease wait while we load the data...","requiresTemplateOptions":false,"requiresKey":false,"requiresDataSource":false},{"key":"gridADUsers","templateOptions":{"label":"AD Users","grid":{"columns":[{"headerName":"DisplayName","field":"displayName"},{"headerName":"Sam Account Name","field":"samAccountName"},{"headerName":"User Principal Name","field":"userPrincipalName"},{"headerName":"Title","field":"title"},{"headerName":"Department","field":"department"},{"headerName":"Disabled At","field":"disabledAt"},{"headerName":"Last Logon Date","field":"lastLogonDate"},{"headerName":"Distinguished Name","field":"distinguishedName"}],"height":500,"rowSelection":"single"},"dataSourceConfig":{"dataSourceGuid":"$dataSourceGuid_0","input":{"propertyInputs":[]}},"useFilter":true,"useDefault":false},"type":"grid","summaryVisibility":"Hide element","requiresTemplateOptions":true,"requiresKey":true,"requiresDataSource":true}]
+[{"templateOptions":{"title":"This report displays local AD accounts that were disabled within the number of days you provide.","titleField":"","bannerType":"Info","useBody":true},"type":"textbanner","summaryVisibility":"Show","body":"After entering the number of days, please wait while we load the data.  ","requiresTemplateOptions":false,"requiresKey":false,"requiresDataSource":false},{"key":"thresholdDays","templateOptions":{"label":"Number of days to look back","placeholder":"30","required":true},"type":"number","defaultValue":"30","summaryVisibility":"Show","requiresTemplateOptions":true,"requiresKey":true,"requiresDataSource":false},{"key":"gridDisabledAdUsers","templateOptions":{"label":"AD Users","grid":{"columns":[{"headerName":"Display Name","field":"DisplayName"},{"headerName":"Sam Account Name","field":"SamAccountName"},{"headerName":"User Principal Name","field":"UserPrincipalName"},{"headerName":"Department","field":"Department"},{"headerName":"Title","field":"Title"},{"headerName":"Last Logon Date","field":"LastLogonDate"},{"headerName":"Enabled","field":"Enabled"},{"headerName":"Disabled At","field":"disabledAt"}],"height":500,"rowSelection":"single"},"dataSourceConfig":{"dataSourceGuid":"$dataSourceGuid_0","input":{"propertyInputs":[{"propertyName":"thresholdDays","otherFieldValue":{"otherFieldKey":"thresholdDays"}}]}},"useFilter":true,"useDefault":false,"allowCsvDownload":true,"required":true},"type":"grid","summaryVisibility":"Hide element","requiresTemplateOptions":true,"requiresKey":true,"requiresDataSource":true}]
 "@ 
 
 $dynamicFormGuid = [PSCustomObject]@{} 
 $dynamicFormName = @'
-AD - Report - Disabled accounts in the past 30 days
+AD - Report - Disabled accounts in the past X days
 '@ 
 Invoke-HelloIDDynamicForm -FormName $dynamicFormName -FormSchema $tmpSchema  -returnObject ([Ref]$dynamicFormGuid) 
 <# END: Dynamic Form #>
@@ -410,7 +455,7 @@ if(-not[String]::IsNullOrEmpty($delegatedFormAccessGroupNames)){
             $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
             $delegatedFormAccessGroupGuid = $response.groupGuid
             $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
-            
+        
             Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
         } catch {
             Write-Error "HelloID (access)group '$group', message: $_"
@@ -427,10 +472,10 @@ foreach($category in $delegatedFormCategories) {
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories/$category")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
         $response = $response | Where-Object {$_.name.en -eq $category}
-	
+    
         $tmpGuid = $response.delegatedFormCategoryGuid
         $delegatedFormCategoryGuids += $tmpGuid
-        
+    
         Write-Information "HelloID Delegated Form category '$category' successfully found$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     } catch {
         Write-Warning "HelloID Delegated Form category '$category' not found"
@@ -453,7 +498,7 @@ $delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategor
 <# Begin: Delegated Form #>
 $delegatedFormRef = [PSCustomObject]@{guid = $null; created = $null} 
 $delegatedFormName = @'
-AD - Report - Disabled accounts in the past 30 days
+AD - Report - Disabled accounts in the past X days
 '@
 $tmpTask = @'
 {"name":"AD - Report - Disabled accounts in the past 30 days","script":"# your script here","runInCloud":false}

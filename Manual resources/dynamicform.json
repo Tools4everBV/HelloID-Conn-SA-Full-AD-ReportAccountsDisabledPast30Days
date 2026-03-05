@@ -1,72 +1,96 @@
 [
-    {
-        "templateOptions":  {
-
-                            },
-        "type":  "markdown",
-        "summaryVisibility":  "Show",
-        "body":  "This report shows which local AD accounts have been disabled in the past 30 days.\nPlease wait while we load the data...",
-        "requiresTemplateOptions":  false,
-        "requiresKey":  false,
-        "requiresDataSource":  false
+  {
+    "templateOptions": {
+      "title": "This report displays local AD accounts that were disabled within the number of days you provide.",
+      "titleField": "",
+      "bannerType": "Info",
+      "useBody": true
     },
-    {
-        "key":  "gridADUsers",
-        "templateOptions":  {
-                                "label":  "AD Users",
-                                "grid":  {
-                                             "columns":  [
-                                                             {
-                                                                 "headerName":  "DisplayName",
-                                                                 "field":  "displayName"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Sam Account Name",
-                                                                 "field":  "samAccountName"
-                                                             },
-                                                             {
-                                                                 "headerName":  "User Principal Name",
-                                                                 "field":  "userPrincipalName"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Title",
-                                                                 "field":  "title"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Department",
-                                                                 "field":  "department"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Disabled At",
-                                                                 "field":  "disabledAt"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Last Logon Date",
-                                                                 "field":  "lastLogonDate"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Distinguished Name",
-                                                                 "field":  "distinguishedName"
-                                                             }
-                                                         ],
-                                             "height":  500,
-                                             "rowSelection":  "single"
-                                         },
-                                "dataSourceConfig":  {
-                                                         "dataSourceGuid":  "$dataSourceGuid_0",
-                                                         "input":  {
-                                                                       "propertyInputs":  [
-
-                                                                                          ]
-                                                                   }
-                                                     },
-                                "useFilter":  true,
-                                "useDefault":  false
-                            },
-        "type":  "grid",
-        "summaryVisibility":  "Hide element",
-        "requiresTemplateOptions":  true,
-        "requiresKey":  true,
-        "requiresDataSource":  true
-    }
+    "type": "textbanner",
+    "summaryVisibility": "Show",
+    "body": "After entering the number of days, please wait while we load the data.  ",
+    "requiresTemplateOptions": false,
+    "requiresKey": false,
+    "requiresDataSource": false
+  },
+  {
+    "key": "thresholdDays",
+    "templateOptions": {
+      "label": "Number of days to look back",
+      "placeholder": "30",
+      "required": true
+    },
+    "type": "number",
+    "defaultValue": "30",
+    "summaryVisibility": "Show",
+    "requiresTemplateOptions": true,
+    "requiresKey": true,
+    "requiresDataSource": false
+  },
+  {
+    "key": "gridDisabledAdUsers",
+    "templateOptions": {
+      "label": "AD Users",
+      "grid": {
+        "columns": [
+          {
+            "headerName": "Display Name",
+            "field": "DisplayName"
+          },
+          {
+            "headerName": "Sam Account Name",
+            "field": "SamAccountName"
+          },
+          {
+            "headerName": "User Principal Name",
+            "field": "UserPrincipalName"
+          },
+          {
+            "headerName": "Department",
+            "field": "Department"
+          },
+          {
+            "headerName": "Title",
+            "field": "Title"
+          },
+          {
+            "headerName": "Last Logon Date",
+            "field": "LastLogonDate"
+          },
+          {
+            "headerName": "Enabled",
+            "field": "Enabled"
+          },
+          {
+            "headerName": "Disabled At",
+            "field": "disabledAt"
+          }
+        ],
+        "height": 500,
+        "rowSelection": "single"
+      },
+      "dataSourceConfig": {
+        "dataSourceGuid": "$dataSourceGuid_0",
+        "input": {
+          "propertyInputs": [
+            {
+              "propertyName": "thresholdDays",
+              "otherFieldValue": {
+                "otherFieldKey": "thresholdDays"
+              }
+            }
+          ]
+        }
+      },
+      "useFilter": true,
+      "useDefault": false,
+      "allowCsvDownload": true,
+      "required": true
+    },
+    "type": "grid",
+    "summaryVisibility": "Hide element",
+    "requiresTemplateOptions": true,
+    "requiresKey": true,
+    "requiresDataSource": true
+  }
 ]
