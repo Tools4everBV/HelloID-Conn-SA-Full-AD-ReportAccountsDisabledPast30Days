@@ -1,0 +1,4 @@
+{
+    "name":  "Report - Disabled AD users in the past X days",
+    "runInCloud":  false
+}

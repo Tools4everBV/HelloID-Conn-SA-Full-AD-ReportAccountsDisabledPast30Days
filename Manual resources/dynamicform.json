@@ -1,52 +1,69 @@
 [
     {
         "templateOptions":  {
-
+                                "title":  "This report displays local AD accounts that were disabled within the number of days you provide.",
+                                "titleField":  "",
+                                "bannerType":  "Info",
+                                "useBody":  true
                             },
-        "type":  "markdown",
+        "type":  "textbanner",
         "summaryVisibility":  "Show",
-        "body":  "This report shows which local AD accounts have been disabled in the past 30 days.\nPlease wait while we load the data...",
+        "body":  "After entering the number of days, please wait while we load the data.  ",
         "requiresTemplateOptions":  false,
         "requiresKey":  false,
         "requiresDataSource":  false
     },
     {
-        "key":  "gridADUsers",
+        "key":  "thresholdDays",
+        "templateOptions":  {
+                                "label":  "Number of days to look back",
+                                "placeholder":  "30",
+                                "required":  true
+                            },
+        "type":  "number",
+        "defaultValue":  "30",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "gridDisabledAdUsers",
         "templateOptions":  {
                                 "label":  "AD Users",
                                 "grid":  {
                                              "columns":  [
                                                              {
-                                                                 "headerName":  "DisplayName",
-                                                                 "field":  "displayName"
+                                                                 "headerName":  "Display Name",
+                                                                 "field":  "DisplayName"
                                                              },
                                                              {
                                                                  "headerName":  "Sam Account Name",
-                                                                 "field":  "samAccountName"
+                                                                 "field":  "SamAccountName"
                                                              },
                                                              {
                                                                  "headerName":  "User Principal Name",
-                                                                 "field":  "userPrincipalName"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Title",
-                                                                 "field":  "title"
+                                                                 "field":  "UserPrincipalName"
                                                              },
                                                              {
                                                                  "headerName":  "Department",
-                                                                 "field":  "department"
+                                                                 "field":  "Department"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Title",
+                                                                 "field":  "Title"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Last Logon Date",
+                                                                 "field":  "LastLogonDate"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Enabled",
+                                                                 "field":  "Enabled"
                                                              },
                                                              {
                                                                  "headerName":  "Disabled At",
                                                                  "field":  "disabledAt"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Last Logon Date",
-                                                                 "field":  "lastLogonDate"
-                                                             },
-                                                             {
-                                                                 "headerName":  "Distinguished Name",
-                                                                 "field":  "distinguishedName"
                                                              }
                                                          ],
                                              "height":  500,
@@ -56,17 +73,38 @@
                                                          "dataSourceGuid":  "$dataSourceGuid_0",
                                                          "input":  {
                                                                        "propertyInputs":  [
-
+                                                                                              {
+                                                                                                  "propertyName":  "thresholdDays",
+                                                                                                  "otherFieldValue":  {
+                                                                                                                          "otherFieldKey":  "thresholdDays"
+                                                                                                                      }
+                                                                                              }
                                                                                           ]
                                                                    }
                                                      },
                                 "useFilter":  true,
-                                "useDefault":  false
+                                "useDefault":  false,
+                                "allowCsvDownload":  true,
+                                "required":  true
                             },
         "type":  "grid",
         "summaryVisibility":  "Hide element",
         "requiresTemplateOptions":  true,
         "requiresKey":  true,
         "requiresDataSource":  true
+    },
+    {
+        "key":  "textInput",
+        "templateOptions":  {
+                                "label":  "Reporting only",
+                                "required":  true,
+                                "minLength":  1,
+                                "readonly":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
     }
 ]
